@@ -3,6 +3,10 @@
 trigger:
 - main # Triggers on changes to the main branch
 
+variables:
+  resourceGroupName: ''
+  aksClusterName: ''
+
 pool:
   vmImage: 'ubuntu-latest' # Use a hosted agent
 
@@ -39,7 +43,7 @@ stages:
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         inlineScript: |
-          az aks get-credentials --resource-group <Your-Resource-Group-Name> --name <Your-AKS-Cluster-Name> --overwrite-existing
+          az aks get-credentials --resource-group $(resourceGroupName) --name $(aksClusterName) --overwrite-existing
 
     - task: Kubernetes@1
       displayName: 'Apply Kubernetes Manifests'

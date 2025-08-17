@@ -2,6 +2,9 @@
 
 trigger: none # Manual trigger only
 
+variables:
+  - group: 'aks-demo-dev-vars'
+
 pool:
   vmImage: 'ubuntu-latest' # Use a hosted agent
 
@@ -43,7 +46,7 @@ stages:
       inputs:
         targetType: 'inline'
         script: |
-          terraform -chdir=infra init -backend-config="resource_group_name=<Your-TF-Backend-RG>" -backend-config="storage_account_name=<Your-TF-Backend-SA>" -backend-config="container_name=<Your-TF-Backend-Container>" -backend-config="key=$(Environment)-aks-sql.tfstate"
+          terraform -chdir=infra init -backend-config="resource_group_name=<Your-TF-Backend-RG>" -backend-config="storage_account_name=<Your-TF-Backend-SA>" -backend-config="container_name=<Your-TF-Backend-Container>" -backend-config="key=$(tfstate_key)"
           
     - task: TerraformTaskV4@4
       displayName: 'Terraform Plan'
