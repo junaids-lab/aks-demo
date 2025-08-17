@@ -24,8 +24,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
   default_node_pool {
     name       = "default"
-    node_count = 1
-    vm_size    = "Standard_D2ds_v4"
+    node_count = var.aks_node_count
+    vm_size    = var.aks_vm_size
   # zones      = ["1", "2", "3"] # Span across multiple Availability Zones 
   }
 
@@ -42,8 +42,8 @@ resource "azurerm_mssql_server" "sql_server" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   version             = "12.0"
-  administrator_login = "sqladmin"
-  administrator_login_password = "Password1234!"
+  administrator_login = var.sql_username
+  administrator_login_password = var.sql_password
 }
 
 # 2. Create the SQL Database on the server
