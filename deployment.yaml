@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aks-demo-deployment
+  labels:
+    app: aks-demo-app
+spec:
+  replicas: 2 # Highly available setup with multiple replicas
+  selector:
+    matchLabels:
+      app: aks-demo-app
+  template:
+    metadata:
+      labels:
+        app: aks-demo-app
+    spec:
+      containers:
+      - name: aks-demo-container
+        image: aksdemojun0101.azurecr.io/aks-demo-app:latest # Placeholder for your image
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
