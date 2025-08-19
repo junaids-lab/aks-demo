@@ -5,6 +5,12 @@ trigger: none # Manual trigger only
 pool:
   vmImage: 'ubuntu-latest' # Use a hosted agent
 
+variables:
+- group: 'perf-demo-vars'
+
+- name: tfstate_key
+  value: '$(resource_group_name)-$(aks_cluster_name).tfstate'
+
 stages:
 - stage: ProvisionInfrastructure
   displayName: 'Provision Infrastructure with Terraform'
