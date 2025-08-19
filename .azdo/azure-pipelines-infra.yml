@@ -7,9 +7,10 @@ pool:
 
 variables:
 - group: 'perf-demo-vars'
-
 - name: tfstate_key
   value: '$(resource_group_name)-$(aks_cluster_name).tfstate'
+- name: ARM_USE_CLI
+  value: false
 
 stages:
 - stage: ProvisionInfrastructure
@@ -57,13 +58,8 @@ stages:
           unzip terraform.zip
           sudo mv terraform /usr/local/bin/
 
-    - task: TerraformInstaller@0
-      displayName: 'Install Terraform CLI'
-      inputs:
-        terraformVersion: '1.2.9'
-
     - task: AzureCLI@2
-      displayName: 'Terraform Init (with OIDC fix)'
+      displayName: 'Terraform Init'
       inputs:
         azureSubscription: 'aks-demo-service-connection'
         scriptType: 'bash'
