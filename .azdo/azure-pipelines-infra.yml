@@ -60,7 +60,7 @@ stages:
 
           # Terraform Init
           echo "##[section]Initializing Terraform Backend"
-          terraform -chdir=infra init \
+          terraform -chdir=infra init -reconfigure \
             -backend-config="resource_group_name=terraform-backend-rg" \
             -backend-config="storage_account_name=aksdemotfstate001" \
             -backend-config="container_name=aksdemotfstate" \
