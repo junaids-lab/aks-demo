@@ -47,6 +47,7 @@ stages:
           az login --service-principal -u $(servicePrincipalId) -p $(servicePrincipalKey) --tenant $(tenantId)
 
           # Terraform Init with -reconfigure
+          echo "##[section]Initializing Terraform Backend"
           terraform -chdir=infra init -reconfigure \
             -backend-config="resource_group_name=terraform-backend-rg" \
             -backend-config="storage_account_name=aksdemotfstate001" \
@@ -54,13 +55,17 @@ stages:
             -backend-config="key=$(tfstate_key)"
 
           # Terraform Validate
+          echo "##[section]Validating Terraform Code"
           terraform -chdir=infra validate
 
           # Terraform Format
+          echo "##[section]Formatting Terraform Code"
           terraform -chdir=infra fmt
 
-          # Terraform Plan
+          # Terraform Plan and create the plan file
+          echo "##[section]Running Terraform Plan"
           terraform -chdir=infra plan -out=tfplan
 
-          # Terraform Apply
+          # Terraform Apply using the plan file
+          echo "##[section]Running Terraform Apply"
           terraform -chdir=infra apply -auto-approve tfplan
