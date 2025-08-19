@@ -44,18 +44,19 @@ stages:
       inputs:
         terraformVersion: '1.2.9'
 
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Init'
+    - task: AzureCLI@2
+      displayName: 'Terraform Init (with OIDC fix)'
       inputs:
-        provider: 'azurerm'
-        command: 'init'
-        workingDirectory: 'infra'
-        backendServiceArm: 'aks-demo-service-connection'
-      # The following are not valid for backend-config with OIDC
-        backendAzureRmResourceGroupName: 'terraform-backend-rg'
-        backendAzureRmStorageAccountName: 'aksdemotfstate001'
-        backendAzureRmContainerName: 'aksdemotfstate'
-        backendAzureRmKey: '$(tfstate_key)'
+        azureSubscription: 'aks-demo-service-connection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        addSpnToEnvironment: true
+        inlineScript: |
+          terraform -chdir=infra init \
+            -backend-config="resource_group_name=terraform-backend-rg" \
+            -backend-config="storage_account_name=aksdemotfstate001" \
+            -backend-config="container_name=aksdemotfstate" \
+            -backend-config="key=$(tfstate_key)"
 
     - task: TerraformTaskV4@4
       displayName: 'Terraform Validate'
