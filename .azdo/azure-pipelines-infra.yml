@@ -43,7 +43,8 @@ stages:
           unzip terraform.zip
           sudo mv terraform /usr/local/bin/
 
-          # Authenticate with the service principal to set env vars
+          # Authenticate with the service principal
+          # Use the correct syntax to reference the variables
           az login --service-principal -u $(servicePrincipalId) -p $(servicePrincipalKey) --tenant $(tenantId)
 
           # Terraform Init with -reconfigure
