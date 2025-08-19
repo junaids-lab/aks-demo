@@ -4,6 +4,7 @@ trigger: none # Manual trigger only
 
 variables:
   - group: 'aks-demo-dev-vars'
+    tfstate_key: '$(resource_group_name)-$(aks_cluster_name).tfstate'
 
 pool:
   vmImage: 'ubuntu-latest' # Use a hosted agent
@@ -41,12 +42,39 @@ stages:
       inputs:
         terraformVersion: '1.2.9'
 
-    - task: Bash@3
+    - task: TerraformTaskV4@4
       displayName: 'Terraform Init'
       inputs:
-        targetType: 'inline'
-        script: |
-          terraform -chdir=infra init -backend-config="resource_group_name=<Your-TF-Backend-RG>" -backend-config="storage_account_name=<Your-TF-Backend-SA>" -backend-config="container_name=<Your-TF-Backend-Container>" -backend-config="key=$(tfstate_key)"
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: 'infra'
+        backendServiceArm: 'aks-demo-service-connection'
+        backendAzureRmResourceGroupName: 'terraform-backend-rg'
+        backendAzureRmStorageAccountName: 'aksdemotfstate001'
+        backendAzureRmContainerName: 'aksdemotfstate'
+        backendAzureRmKey: '$(tfstate_key)'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Validate'
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+        workingDirectory: 'infra'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Format'
+      inputs:
+        provider: 'azurerm'
+        command: 'fmt'
+        workingDirectory: 'infra'
+
+    - task: TerraformTaskV4@4
+      displayName: 'Terraform Plan'
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: 'infra'
+        environmentServiceName: 'aks-demo-service-connection'
           
     - task: TerraformTaskV4@4
       displayName: 'Terraform Plan'

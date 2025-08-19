@@ -5,11 +5,20 @@ terraform {
       version = "~> 3.0"
     }
   }
+  # Define the backend to store the Terraform state file 
+  backend "azurerm" {
+    resource_group_name  = "terraform-backend-rg"
+    storage_account_name = "aksdemotfstate001"
+    container_name       = "aksdemotfstate"
+    key                  = var.tfstate_key
+  }
 }
 
 provider "azurerm" {
   features {}
 }
+
+
 
 resource "azurerm_resource_group" "rg" {
   name     = var.resource_group_name

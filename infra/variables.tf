@@ -35,3 +35,8 @@ variable "aks_vm_size" {
   description = "The type of the vm size."
   default     = "Standard_D2ds_v6"  # Set a sensible default for development environments
 }
+
+variable "tfstate_key" {
+  type = string
+  description = "The unique key for the Terraform state file."
+}

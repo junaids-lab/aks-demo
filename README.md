@@ -6,25 +6,28 @@ The entire process is automated using Azure DevOps Pipelines, demonstrating a co
 
 ## Project Structure
 
-- **`.azdo/`**: Contains the Azure DevOps pipeline YAML files.
-  - `azure-pipelines-infra.yml`: The pipeline to provision Azure infrastructure with Terraform.
-  - `azure-pipelines-app.yml`: The pipeline to deploy the application to an AKS cluster.
-- **`infra/`**: Contains the reusable Terraform code for provisioning the AKS cluster and Azure SQL.
-- **`app/`**: Contains the source code for the simple web application and its `Dockerfile`.
-- **`deploy/`**: Contains the Kubernetes manifests and scripts for deploying the application.
-- **`README.md`**: This file.
+-   **`.azdo/`**: Contains the Azure DevOps pipeline YAML files.
+    -   `azure-pipelines-infra.yml`: The pipeline to provision Azure infrastructure with Terraform.
+    -   `azure-pipelines-app.yml`: The pipeline to deploy the application to an AKS cluster.
+-   **`infra/`**: Contains the reusable Terraform code for provisioning the AKS cluster and Azure SQL.
+-   **`app/`**: Contains the source code for the simple web application and its `Dockerfile`.
+-   **`deploy/`**: Contains the Kubernetes manifests and scripts for deploying the application.
+-   **`README.md`**: This file.
+
 ![Architecture Diagram](assets/architecture_diagram.png)
+
 ## Prerequisites
 
 -   An **Azure DevOps Organization** with a valid parallelism grant.
 -   **Azure CLI** installed and configured.
+-   **Terraform CLI** installed and configured.
 -   **Docker** and **kubectl** installed for local testing.
 
 ---
 
 ## For Platform Engineers 🛠️
 
-### How to Build, Maintain, and Roll Out Changes
+### CI/CD Workflow for Infrastructure
 
 As a platform engineer, your primary responsibility is to manage the hosting environment.
 
@@ -32,9 +35,20 @@ As a platform engineer, your primary responsibility is to manage the hosting env
 
 Set up the core resources and connections in Azure DevOps once.
 
--   **Service Connection**: Go to **Project settings > Service connections** and create an **Azure Resource Manager** connection. Name it `aks-demo-service-connection`. This provides the pipelines with the permissions to manage Azure resources.
--   **Variable Groups**: Go to **Pipelines > Library** and create a new **Variable Group** for each environment (e.g., `aks-demo-dev-vars`). Store your environment-specific configuration here, including `aks_cluster_name`, `resource_group_name`, `sql_username`, and `sql_password`.
--   **Terraform Backend**: Create a dedicated Azure Storage Account to store the Terraform state files. This ensures state locking and collaboration.
+-   **Create the Terraform Backend**: Create a dedicated Azure Storage Account to store the Terraform state files. This is a crucial step for managing infrastructure and collaboration. Use the following Azure CLI commands to create a resource group, storage account, and container for your state files.
+    ```bash
+    # Create a resource group for your backend storage account
+    az group create --name terraform-backend-rg --location eastus
+
+    # Create the storage account
+    az storage account create --name aksdemotfabc123 --resource-group terraform-backend-rg --location eastus --sku Standard_LRS
+
+    # Create the blob container
+    az storage container create --name tfstate --account-name aksdemotfabc123
+    ```
+
+-   **Service Connection**: Go to **Project settings > Service connections** and create an **Azure Resource Manager** connection. Name it `aks-demo-service-connection`.
+-   **Variable Groups**: Go to **Pipelines > Library** and create a new **Variable Group** for each environment (e.g., `aks-demo-dev-vars`). Store your environment-specific configuration here.
 
 #### 2. Provisioning Infrastructure
 
@@ -50,7 +64,7 @@ To make changes to the infrastructure, update the Terraform files in the `infra/
 -   Commit the changes to your Git branch.
 -   Trigger the `azure-pipelines-infra.yml` pipeline, which will apply the changes to your existing infrastructure.
 
-![Architecture Diagram](assets/workflow_diagram.png)
+![Workflow Diagram](assets/workflow_diagram.png)
 
 ### How to Onboard New Teams 🚀
 
@@ -58,7 +72,6 @@ To onboard a new team, you simply repeat the provisioning process with a new con
 
 1.  **Create a New Variable Group**: Create a new Variable Group in the Azure DevOps library (e.g., `team-alpha-prod-vars`) with the specific names and location for the new team's cluster.
 2.  **Provision the New Cluster**: Run the `azure-pipelines-infra.yml` pipeline manually and select the new variable group. This creates an isolated cluster for the new team.
-3.  **Provide Credentials**: Give the application team credentials (e.g., a Service Principal) with permissions to push Docker images to your Azure Container Registry.
 
 ---
 
@@ -85,10 +98,47 @@ The `app/Dockerfile` in this repository is designed to build your application im
 
 The platform team will provide you with a deployment pipeline based on `azure-pipelines-app.yml`.
 
--   **Get Access**: The platform team will give you a Service Connection to the hosting environment.
+-   **Get Access**: The platform team will provide you with a Service Connection to the hosting environment.
 -   **Link the Pipeline**: In Azure DevOps, create a new pipeline that points to the `azure-pipelines-app.yml` file. Link it to the Service Connection and Variable Group provided by the platform team.
 
-Once set up, you can trigger this pipeline to deploy your application to the cluster.
+### 3. Verifying the Deployment ✅
+
+After the deployment pipeline completes, use these `kubectl` commands to verify the application is running correctly.
+
+-   **Check the Pod Status**: Ensure your application pods are in the `Running` state.
+    ```bash
+    kubectl get pods
+    ```
+-   **View the Deployment Status**: Check the rollout status of your deployment.
+    ```bash
+    kubectl rollout status deployment/aks-demo-deployment
+    ```
+-   **Get the Service URL**: Retrieve the external IP address of your application's Service. This may take a few minutes to be assigned.
+    ```bash
+    kubectl get service aks-demo-service -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+    ```
+-   **Check the Pod Logs**: If the pods are not in the `Running` state, check the logs for errors. First, get the pod name, then view its logs.
+    ```bash
+    kubectl get pods
+    kubectl logs <pod-name>
+    ```
+
+---
+## Local Development & Troubleshooting Guide
+
+### Local Testing
+
+To test your Terraform code locally, use a temporary `.tfvars` file and run `terraform plan` with the `-var-file` flag.
+
+-   **NOTE**: Do **NOT** commit this file to Git. All production and environment-specific variables are managed in Azure DevOps Variable Groups.
+
+### Troubleshooting Common Issues
+
+* **`Error: No hosted parallelism has been purchased or granted.`**: Fill out the Azure DevOps parallelism request form at `https://aka.ms/azpipelines-parallelism-request`.
+* **`ImagePullBackOff` or `401 Unauthorized`**: Your cluster cannot pull images from the ACR.
+    -   Confirm that your cluster's identity has the **`AcrPull`** role on the ACR. The best practice is to use `az aks update --attach-acr <your-acr-name>`.
+    -   After assigning the role, run `kubectl rollout restart deployment/aks-demo-deployment` to force an immediate image pull.
+* **`kubectl` is pointing to the wrong cluster**: Run `az aks get-credentials` to get the correct credentials and `kubectl config use-context <cluster-name>` to switch between clusters.
 
 ### Useful `kubectl` Commands
 
