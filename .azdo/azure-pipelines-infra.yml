@@ -39,12 +39,11 @@ stages:
         targetType: 'inline'
         script: |
           # Install Terraform
-          curl -sL https://releases.hashicorp.com/terraform/1.2.9/terraform_1.2.9_linux_amd64.zip -o terraform.zip
+          curl -sL https.hashicorp.com/terraform/1.2.9/terraform_1.2.9_linux_amd64.zip -o terraform.zip
           unzip terraform.zip
           sudo mv terraform /usr/local/bin/
 
-          # Authenticate with the service principal
-          # Use the correct syntax to reference the variables
+          # Authenticate with the service principal using the correct variable syntax
           az login --service-principal -u $(servicePrincipalId) -p $(servicePrincipalKey) --tenant $(tenantId)
 
           # Terraform Init with -reconfigure
