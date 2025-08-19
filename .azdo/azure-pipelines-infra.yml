@@ -19,7 +19,7 @@ stages:
   - job: TerraformApply
     displayName: 'Terraform Apply'
     steps:
-    - checkout: self
+    - checkout: self # Checks out the monorepo
 
     # Step 1: Set SQL credentials as pipeline variables
     - task: AzureCLI@2
@@ -31,13 +31,16 @@ stages:
         inlineScript: |
           echo "##vso[task.setvariable variable=SQL_PASSWORD;isSecret=true]$(SQL_PASSWORD)"
           echo "##vso[task.setvariable variable=SQL_USERNAME;isSecret=true]$(SQL_USERNAME)"
-
-    # Step 2: Install Terraform CLI using the official task
-    # This is much more reliable than a manual script
-    - task: TerraformInstaller@0
-      displayName: 'Install Terraform CLI'
+          
+    # Step 2: Manually install Terraform
+    - task: Bash@3
+      displayName: 'Install Terraform'
       inputs:
-        terraformVersion: '1.2.9'
+        targetType: 'inline'
+        script: |
+          curl -sL https://releases.hashicorp.com/terraform/1.2.9/terraform_1.2.9_linux_amd64.zip -o terraform.zip
+          unzip terraform.zip
+          sudo mv terraform /usr/local/bin/
 
     # Step 3: Run all Terraform commands in a single AzureCLI task
     # This ensures a consistent environment and proper authentication
@@ -47,12 +50,11 @@ stages:
         azureSubscription: 'aks-demo-service-connection'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
-        # Crucial for authentication. The service principal's credentials are now available as environment variables.
         addSpnToEnvironment: true
         inlineScript: |
-          # The service principal credentials are automatically set as environment variables by the task.
-          # We don't need to manually run 'az login'.
-          
+          # We use addSpnToEnvironment: true to set environment variables.
+          # The ARM_USE_CLI: false variable at the top of the file forces Terraform to use them.
+
           # Terraform Init with -reconfigure
           echo "##[section]Initializing Terraform Backend"
           terraform -chdir=infra init -reconfigure \
