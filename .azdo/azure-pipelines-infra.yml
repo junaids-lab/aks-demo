@@ -2,10 +2,6 @@
 
 trigger: none # Manual trigger only
 
-variables:
-  - group: 'aks-demo-dev-vars'
-    tfstate_key: '$(resource_group_name)-$(aks_cluster_name).tfstate'
-
 pool:
   vmImage: 'ubuntu-latest' # Use a hosted agent
 
