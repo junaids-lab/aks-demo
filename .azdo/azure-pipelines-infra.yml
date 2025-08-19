@@ -52,10 +52,10 @@ stages:
         workingDirectory: 'infra'
         backendServiceArm: 'aks-demo-service-connection'
       # The following are not valid for backend-config with OIDC
-      # backendAzureRmResourceGroupName: 'terraform-backend-rg'
-      # backendAzureRmStorageAccountName: 'aksdemotfstate001'
-      # backendAzureRmContainerName: 'aksdemotfstate'
-      # backendAzureRmKey: '$(tfstate_key)'
+        backendAzureRmResourceGroupName: 'terraform-backend-rg'
+        backendAzureRmStorageAccountName: 'aksdemotfstate001'
+        backendAzureRmContainerName: 'aksdemotfstate'
+        backendAzureRmKey: '$(tfstate_key)'
 
     - task: TerraformTaskV4@4
       displayName: 'Terraform Validate'
