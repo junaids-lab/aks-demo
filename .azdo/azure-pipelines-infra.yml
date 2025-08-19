@@ -32,23 +32,7 @@ stages:
           echo "##vso[task.setvariable variable=SQL_PASSWORD;isSecret=true]$(SQL_PASSWORD)"
           echo "##vso[task.setvariable variable=SQL_USERNAME;isSecret=true]$(SQL_USERNAME)"
           
-    # Step 2: Expose Service Principal credentials for Terraform
-    - task: AzureCLI@2
-      displayName: 'Expose Service Principal to Environment'
-      inputs:
-        azureSubscription: 'aks-demo-service-connection'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        addSpnToEnvironment: true # This is the crucial line for Terraform authentication
-        inlineScript: |
-          echo "Service Principal credentials are now available as environment variables for Terraform."
-          
-    # Step 3: Install Terraform CLI
-    - task: TerraformInstaller@0
-      displayName: 'Install Terraform CLI'
-      inputs:
-        terraformVersion: '1.2.9'
-
+    # Step 2: Manually install Terraform
     - task: Bash@3
       displayName: 'Install Terraform'
       inputs:
@@ -58,54 +42,42 @@ stages:
           unzip terraform.zip
           sudo mv terraform /usr/local/bin/
 
+    # Step 3: Run Terraform Init, Plan, and Apply
+    # Consolidate these steps into a single task to ensure proper authentication context
     - task: AzureCLI@2
-      displayName: 'Terraform Init'
+      displayName: 'Run Terraform Commands'
       inputs:
         azureSubscription: 'aks-demo-service-connection'
         scriptType: 'bash'
         scriptLocation: 'inlineScript'
         addSpnToEnvironment: true
         inlineScript: |
+          # Set explicit environment variables for Terraform authentication
+          # This is the most reliable method for automated pipelines
+          export ARM_CLIENT_ID=$(servicePrincipalId)
+          export ARM_TENANT_ID=$(tenantId)
+          export ARM_SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+
+          # Terraform Init
+          echo "##[section]Initializing Terraform Backend"
           terraform -chdir=infra init \
             -backend-config="resource_group_name=terraform-backend-rg" \
             -backend-config="storage_account_name=aksdemotfstate001" \
             -backend-config="container_name=aksdemotfstate" \
             -backend-config="key=$(tfstate_key)"
 
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Validate'
-      inputs:
-        provider: 'azurerm'
-        command: 'validate'
-        workingDirectory: 'infra'
+          # Terraform Validate
+          echo "##[section]Validating Terraform Code"
+          terraform -chdir=infra validate
 
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Format'
-      inputs:
-        provider: 'azurerm'
-        command: 'fmt'
-        workingDirectory: 'infra'
+          # Terraform Format (optional, but good practice)
+          echo "##[section]Formatting Terraform Code"
+          terraform -chdir=infra fmt
 
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Plan'
-      inputs:
-        provider: 'azurerm'
-        command: 'plan'
-        workingDirectory: 'infra'
-        environmentServiceName: 'aks-demo-service-connection'
-          
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Plan'
-      inputs:
-        provider: 'azurerm'
-        command: 'plan'
-        workingDirectory: 'infra'
-        environmentServiceName: 'aks-demo-service-connection' # Use your service connection name here
-        
-    - task: TerraformTaskV4@4
-      displayName: 'Terraform Apply'
-      inputs:
-        provider: 'azurerm'
-        command: 'apply'
-        workingDirectory: 'infra'
-        environmentServiceName: 'aks-demo-service-connection' # Use your service connection name here
+          # Terraform Plan
+          echo "##[section]Running Terraform Plan"
+          terraform -chdir=infra plan
+
+          # Terraform Apply
+          echo "##[section]Running Terraform Apply"
+          terraform -chdir=infra apply -auto-approve
